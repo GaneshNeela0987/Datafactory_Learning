@@ -1,0 +1,15 @@
+{
+	"name": "ganesh-datafactory-practice",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "1414ef4c-e630-4d30-95f8-05499d95d14f",
+		"tenantId": "8d458a54-ffd9-4e02-b803-c220f3319de1"
+	}
+}
