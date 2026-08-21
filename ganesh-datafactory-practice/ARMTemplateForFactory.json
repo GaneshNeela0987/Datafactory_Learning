@@ -1,0 +1,1886 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "ganesh-datafactory-practice"
+		},
+		"AzureDataLakeStoragePractice1_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'AzureDataLakeStoragePractice1'"
+		},
+		"SqlServer1_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SqlServer1'"
+		},
+		"AzureDataLakeStoragePractice1_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://ganeshblobstorage1.dfs.core.windows.net/"
+		},
+		"LS_REST_DummyJSON_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://dummyjson.com"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_Copy')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy data1 Practice",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "SqlServerSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "order_id",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "order_id",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "date",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "date",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "product",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "product",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "category",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "category",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "quantity",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "quantity",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "unit_price",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "unit_price",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "total_sales",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "total_sales",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "region",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "region",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "payment_method",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "payment_method",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DelimitedText_PL_copy",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SqlServerTable1",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-08-20T10:43:45Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DelimitedText_PL_copy')]",
+				"[concat(variables('factoryId'), '/datasets/SqlServerTable1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_DummyJSON_Products_Ingest')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Extracts Products from DummyJSON via offset/limit pagination, lands raw JSON in ADLS Gen2, reads each page directly from REST to flatten products into SQL staging, merges into curated, updates watermark, logs failures.",
+				"activities": [
+					{
+						"name": "Lookup_GetWatermark",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:05:00",
+							"retry": 2,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "SELECT WatermarkValue FROM dbo.ETL_Watermark WHERE SourceSystem = '@{pipeline().parameters.SourceSystem}' AND EntityName = '@{pipeline().parameters.EntityName}'",
+									"type": "Expression"
+								},
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_SQL_Watermark",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": true
+						}
+					},
+					{
+						"name": "SetVar_Skip",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup_GetWatermark",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "vSkip",
+							"value": {
+								"value": "@int(activity('Lookup_GetWatermark').output.firstRow.WatermarkValue)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "SetVar_StageSkip",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "SetVar_Skip",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "vStageSkip",
+							"value": {
+								"value": "@variables('vSkip')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "SetVar_RunFolder",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup_GetWatermark",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "vRunFolder",
+							"value": {
+								"value": "@formatDateTime(utcnow(),'yyyy/MM/dd/HH')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Web_GetTotalCount",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "SetVar_Skip",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:05:00",
+							"retry": 2,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": "https://dummyjson.com/products?limit=1&skip=0"
+						}
+					},
+					{
+						"name": "SetVar_Total",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Web_GetTotalCount",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "vTotal",
+							"value": {
+								"value": "@int(activity('Web_GetTotalCount').output.total)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Until_PaginateAndLand",
+						"type": "Until",
+						"dependsOn": [
+							{
+								"activity": "SetVar_Total",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "SetVar_RunFolder",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greaterOrEquals(variables('vSkip'), variables('vTotal'))",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy_ProductsPage",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.00:10:00",
+										"retry": 3,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "RestSource",
+											"httpRequestTimeout": "00:01:40",
+											"requestInterval": "00.00:00:00.010",
+											"requestMethod": "GET"
+										},
+										"sink": {
+											"type": "JsonSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "JsonWriteSettings",
+												"filePattern": "setOfObjects"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_REST_Products",
+											"type": "DatasetReference",
+											"parameters": {
+												"relativeUrl": {
+													"value": "@concat('/products?limit=', string(pipeline().parameters.PageSize), '&skip=', string(variables('vSkip')))",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Json1",
+											"type": "DatasetReference",
+											"parameters": {
+												"folderPath": {
+													"value": "@concat('project-raw1/api/dummyjson/products/', variables('vRunFolder'))",
+													"type": "Expression"
+												},
+												"fileName": {
+													"value": "@concat('part-', string(variables('vSkip')), '.json')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "SetVar_ComputeNextSkip",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Copy_ProductsPage",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "vSkipNext",
+										"value": {
+											"value": "@add(variables('vSkip'), pipeline().parameters.PageSize)",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetVar_ApplySkip",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "SetVar_ComputeNextSkip",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "vSkip",
+										"value": {
+											"value": "@variables('vSkipNext')",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"timeout": "0.12:00:00"
+						}
+					},
+					{
+						"name": "Script_TruncateStaging",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Until_PaginateAndLand",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "TRUNCATE TABLE dbo.stg_Products;"
+								}
+							]
+						}
+					},
+					{
+						"name": "Copy_FlattenToStaging",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Script_TruncateStaging",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:15:00",
+							"retry": 2,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": false,
+									"wildcardFolderPath": {
+										"value": "@concat('project-raw1/api/dummyjson/products/', variables('vRunFolder'))",
+										"type": "Expression"
+									},
+									"wildcardFileName": "*.json"
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "SqlServerSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"path": "$['id']"
+										},
+										"sink": {
+											"name": "Id",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"path": "$['title']"
+										},
+										"sink": {
+											"name": "Title",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['description']"
+										},
+										"sink": {
+											"name": "Description",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['category']"
+										},
+										"sink": {
+											"name": "Category",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['price']"
+										},
+										"sink": {
+											"name": "Price",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"path": "$['discountPercentage']"
+										},
+										"sink": {
+											"name": "DiscountPercentage",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"path": "$['rating']"
+										},
+										"sink": {
+											"name": "Rating",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"path": "$['stock']"
+										},
+										"sink": {
+											"name": "Stock",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"path": "$['brand']"
+										},
+										"sink": {
+											"name": "Brand",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['sku']"
+										},
+										"sink": {
+											"name": "Sku",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['weight']"
+										},
+										"sink": {
+											"name": "Weight",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"path": "$['dimensions']['width']"
+										},
+										"sink": {
+											"name": "DimensionWidth",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"path": "$['dimensions']['height']"
+										},
+										"sink": {
+											"name": "DimensionHeight",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"path": "$['dimensions']['depth']"
+										},
+										"sink": {
+											"name": "DimensionDepth",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"path": "$['warrantyInformation']"
+										},
+										"sink": {
+											"name": "WarrantyInformation",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['shippingInformation']"
+										},
+										"sink": {
+											"name": "ShippingInformation",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['availabilityStatus']"
+										},
+										"sink": {
+											"name": "AvailabilityStatus",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['returnPolicy']"
+										},
+										"sink": {
+											"name": "ReturnPolicy",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['minimumOrderQuantity']"
+										},
+										"sink": {
+											"name": "MinimumOrderQuantity",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"path": "$['meta']['barcode']"
+										},
+										"sink": {
+											"name": "Barcode",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['meta']['qrCode']"
+										},
+										"sink": {
+											"name": "QrCode",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['meta']['createdAt']"
+										},
+										"sink": {
+											"name": "CreatedAt",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"path": "$['meta']['updatedAt']"
+										},
+										"sink": {
+											"name": "UpdatedAt",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"path": "$['thumbnail']"
+										},
+										"sink": {
+											"name": "Thumbnail",
+											"type": "String"
+										}
+									}
+								],
+								"collectionReference": "$['products']"
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Json1",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_SQL_Staging",
+								"type": "DatasetReference",
+								"parameters": {
+									"tableName": "stg_Products"
+								}
+							}
+						]
+					},
+					{
+						"name": "Script_ValidateStaging",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Copy_FlattenToStaging",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 2,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "EXEC dbo.usp_ValidateProducts;"
+								}
+							]
+						}
+					},
+					{
+						"name": "Script_LogValidationError",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Script_ValidateStaging",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:05:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": {
+										"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'Script_ValidateStaging', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', '@{activity('Script_ValidateStaging').Error.Message}')",
+										"type": "Expression"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Script_MergeToCurated",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Script_ValidateStaging",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:10:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": {
+										"value": "MERGE dbo.Products_Curated AS tgt\nUSING dbo.stg_Products AS src\nON tgt.Id = src.Id\nWHEN MATCHED THEN\n    UPDATE SET\n        tgt.Title = src.Title,\n        tgt.Description = src.Description,\n        tgt.Category = src.Category,\n        tgt.Price = src.Price,\n        tgt.DiscountPercentage = src.DiscountPercentage,\n        tgt.Rating = src.Rating,\n        tgt.Stock = src.Stock,\n        tgt.Brand = src.Brand,\n        tgt.Sku = src.Sku,\n        tgt.Weight = src.Weight,\n        tgt.DimensionWidth = src.DimensionWidth,\n        tgt.DimensionHeight = src.DimensionHeight,\n        tgt.DimensionDepth = src.DimensionDepth,\n        tgt.WarrantyInformation = src.WarrantyInformation,\n        tgt.ShippingInformation = src.ShippingInformation,\n        tgt.AvailabilityStatus = src.AvailabilityStatus,\n        tgt.ReturnPolicy = src.ReturnPolicy,\n        tgt.MinimumOrderQuantity = src.MinimumOrderQuantity,\n        tgt.Barcode = src.Barcode,\n        tgt.QrCode = src.QrCode,\n        tgt.CreatedAt = src.CreatedAt,\n        tgt.UpdatedAt = src.UpdatedAt,\n        tgt.Thumbnail = src.Thumbnail,\n        tgt.LastModifiedDate = SYSUTCDATETIME()\nWHEN NOT MATCHED BY TARGET THEN\n    INSERT (\n        Id, Title, Description, Category, Price, DiscountPercentage, Rating,\n        Stock, Brand, Sku, Weight, DimensionWidth, DimensionHeight, DimensionDepth,\n        WarrantyInformation, ShippingInformation, AvailabilityStatus, ReturnPolicy,\n        MinimumOrderQuantity, Barcode, QrCode, CreatedAt, UpdatedAt, Thumbnail,\n        LastModifiedDate\n    )\n    VALUES (\n        src.Id, src.Title, src.Description, src.Category, src.Price, src.DiscountPercentage, src.Rating,\n        src.Stock, src.Brand, src.Sku, src.Weight, src.DimensionWidth, src.DimensionHeight, src.DimensionDepth,\n        src.WarrantyInformation, src.ShippingInformation, src.AvailabilityStatus, src.ReturnPolicy,\n        src.MinimumOrderQuantity, src.Barcode, src.QrCode, src.CreatedAt, src.UpdatedAt, src.Thumbnail,\n        SYSUTCDATETIME()\n    );",
+										"type": "Expression"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Script_ReportingValidation",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Script_MergeToCurated",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:05:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "SELECT COUNT(*) AS CuratedProductCount FROM dbo.Products_Curated;"
+								}
+							]
+						}
+					},
+					{
+						"name": "Script_LogReportingError",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Script_ReportingValidation",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:05:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": {
+										"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'Script_ReportingValidation', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', '@{activity('Script_ReportingValidation').Error.Message}')",
+										"type": "Expression"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Script_UpdateWatermark",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Script_ReportingValidation",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:05:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": {
+										"value": "@concat('UPDATE dbo.ETL_Watermark SET WatermarkValue = ', string(variables('vSkip')), ', LastUpdatedDate = SYSUTCDATETIME(), Status = ''Success'' WHERE SourceSystem = ''', pipeline().parameters.SourceSystem, ''' AND EntityName = ''', pipeline().parameters.EntityName, ''';')",
+										"type": "Expression"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Script_LogSuccess",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Script_UpdateWatermark",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Script_ReportingValidation",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:05:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": {
+										"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'PipelineSuccess', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', 'Pipeline completed successfully. Raw API data landed in ADLS, staging validated, curated merge completed, reporting validation passed, and watermark updated.')",
+										"type": "Expression"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Script_LogError",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Until_PaginateAndLand",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": {
+										"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'Until_PaginateAndLand', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', '@{activity('Until_PaginateAndLand').Error.Message}')",
+										"type": "Expression"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Script_LogStagingError",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Copy_FlattenToStaging",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SqlServer1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": {
+										"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'Copy_FlattenToStaging', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', '@{activity('Copy_FlattenToStaging').Error.Message}')",
+										"type": "Expression"
+									}
+								}
+							]
+						}
+					}
+				],
+				"concurrency": 1,
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"SourceSystem": {
+						"type": "string",
+						"defaultValue": "DummyJSON"
+					},
+					"EntityName": {
+						"type": "string",
+						"defaultValue": "Products"
+					},
+					"PageSize": {
+						"type": "int",
+						"defaultValue": 50
+					}
+				},
+				"variables": {
+					"vSkip": {
+						"type": "Integer",
+						"defaultValue": 0
+					},
+					"vTotal": {
+						"type": "Integer",
+						"defaultValue": 0
+					},
+					"vRunFolder": {
+						"type": "String"
+					},
+					"vSkipNext": {
+						"type": "Integer",
+						"defaultValue": 0
+					},
+					"vStageSkip": {
+						"type": "Integer",
+						"defaultValue": 0
+					},
+					"vStageSkipNext": {
+						"type": "Integer",
+						"defaultValue": 0
+					}
+				},
+				"annotations": [
+					"REST API ingestion",
+					"Pagination",
+					"Watermark",
+					"ADLS Gen2 raw landing",
+					"ADLS Raw JSON to SQL staging",
+					"JSON flattening",
+					"SQL staging",
+					"Data validation",
+					"SQL MERGE upsert",
+					"Reporting validation",
+					"Watermark update after successful load",
+					"Failure logging",
+					"Retry policies"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_SQL_Watermark')]",
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]",
+				"[concat(variables('factoryId'), '/datasets/Json1')]",
+				"[concat(variables('factoryId'), '/datasets/DS_SQL_Staging')]",
+				"[concat(variables('factoryId'), '/datasets/DS_REST_Products')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_MetadataDriven_ADLS_Load')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LK_Get_Active_Metadata",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT\n    SourceSchema,\n    SourceTable,\n    TargetPath,\n    LoadType,\n    WatermarkColumn\nFROM dbo.ETL_Metadata\nWHERE IsActive = 1;",
+								"queryTimeout": "00:15:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "SqlServerTable2",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "CP_SQL_To_ADLS",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LK_Get_Active_Metadata",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LK_Get_Active_Metadata').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 2,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ""
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "SqlServerTable1",
+											"type": "DatasetReference",
+											"parameters": {
+												"SchemaName": {
+													"value": "@item().SourceSchema",
+													"type": "Expression"
+												},
+												"TableName": {
+													"value": "@item().SourceTable",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "practiceCSV",
+											"type": "DatasetReference",
+											"parameters": {
+												"TargetPath": {
+													"value": "@item().TargetPath",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "@concat(item().SourceTable, '.csv')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-08-20T10:43:45Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SqlServerTable2')]",
+				"[concat(variables('factoryId'), '/datasets/SqlServerTable1')]",
+				"[concat(variables('factoryId'), '/datasets/practiceCSV')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_ADLS_Curated_Parquet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStoragePractice1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"folderPath": {
+						"type": "string",
+						"defaultValue": "project-raw1/api/dummyjson/products/1970/01/01"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().folderPath",
+							"type": "Expression"
+						},
+						"fileSystem": "ganeshblobpractice"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStoragePractice1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_REST_Products')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_REST_DummyJSON",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"relativeUrl": {
+						"type": "string",
+						"defaultValue": "/products?limit=500&skip=0"
+					}
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": {
+						"value": "@dataset().relativeUrl",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_REST_DummyJSON')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_SQL_ErrorLog')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [
+					{
+						"name": "ErrorLogID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "PipelineName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RunId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ActivityName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "SourceSystem",
+						"type": "nvarchar"
+					},
+					{
+						"name": "EntityName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ErrorMessage",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ErrorDateTime",
+						"type": "datetime2",
+						"scale": 7
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "ETL_ErrorLog"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_SQL_Staging')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"tableName": {
+						"type": "string",
+						"defaultValue": "stg_Products"
+					}
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": {
+						"value": "@dataset().tableName",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_SQL_Watermark')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "ETL_Watermark"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DelimitedText_PL_copy')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStoragePractice1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "sample_sales_200_rows.csv",
+						"fileSystem": "ganeshblobpractice"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStoragePractice1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Json1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStoragePractice1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"folderPath": {
+						"type": "string",
+						"defaultValue": "project-raw1/api/dummyjson/products/1970/01/01/00"
+					},
+					"fileName": {
+						"type": "string",
+						"defaultValue": "part-00001.json"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().fileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folderPath",
+							"type": "Expression"
+						},
+						"fileSystem": "ganeshblobpractice"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStoragePractice1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Parquet1Practice')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStoragePractice1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": "ganeshblobpractice"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStoragePractice1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServerTable1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"SchemaName": {
+						"type": "string",
+						"defaultValue": "@dataset().SchemaName"
+					},
+					"TableName": {
+						"type": "string",
+						"defaultValue": "@dataset().TableName"
+					}
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [
+					{
+						"name": "SourceSchema",
+						"type": "varchar"
+					},
+					{
+						"name": "SourceTable",
+						"type": "varchar"
+					},
+					{
+						"name": "TargetPath",
+						"type": "varchar"
+					},
+					{
+						"name": "LoadType",
+						"type": "varchar"
+					},
+					{
+						"name": "WatermarkColumn",
+						"type": "varchar"
+					},
+					{
+						"name": "IsActive",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().SchemaName",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().TableName",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServerTable2')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [
+					{
+						"name": "order_id",
+						"type": "nvarchar"
+					},
+					{
+						"name": "date",
+						"type": "nvarchar"
+					},
+					{
+						"name": "product",
+						"type": "nvarchar"
+					},
+					{
+						"name": "category",
+						"type": "nvarchar"
+					},
+					{
+						"name": "quantity",
+						"type": "nvarchar"
+					},
+					{
+						"name": "unit_price",
+						"type": "nvarchar"
+					},
+					{
+						"name": "total_sales",
+						"type": "nvarchar"
+					},
+					{
+						"name": "region",
+						"type": "nvarchar"
+					},
+					{
+						"name": "payment_method",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "ETL_Metadata"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/practiceCSV')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStoragePractice1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"TargetPath": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().TargetPath",
+							"type": "Expression"
+						},
+						"fileSystem": "ganeshblobpractice"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "order_id",
+						"type": "String"
+					},
+					{
+						"name": "date",
+						"type": "String"
+					},
+					{
+						"name": "product",
+						"type": "String"
+					},
+					{
+						"name": "category",
+						"type": "String"
+					},
+					{
+						"name": "quantity",
+						"type": "String"
+					},
+					{
+						"name": "unit_price",
+						"type": "String"
+					},
+					{
+						"name": "total_sales",
+						"type": "String"
+					},
+					{
+						"name": "region",
+						"type": "String"
+					},
+					{
+						"name": "payment_method",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStoragePractice1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureDataLakeStoragePractice1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('AzureDataLakeStoragePractice1_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('AzureDataLakeStoragePractice1_accountKey')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "integrationRuntime1",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/integrationRuntime1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_REST_DummyJSON')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('LS_REST_DummyJSON_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				},
+				"connectVia": {
+					"referenceName": "integrationRuntime1",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/integrationRuntime1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServer1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SqlServer1_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "integrationRuntime1",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/integrationRuntime1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/integrationRuntime1')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 10,
+							"cleanup": false,
+							"customProperties": []
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
