@@ -1,0 +1,710 @@
+{
+	"name": "PL_DummyJSON_Products_Ingest",
+	"properties": {
+		"description": "Extracts Products from DummyJSON via offset/limit pagination, lands raw JSON in ADLS Gen2, flattens into SQL staging, merges into curated, updates watermark, logs failures.",
+		"activities": [
+			{
+				"name": "Lookup_GetWatermark",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:05:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "SELECT WatermarkValue FROM dbo.ETL_Watermark WHERE SourceSystem = '@{pipeline().parameters.SourceSystem}' AND EntityName = '@{pipeline().parameters.EntityName}'",
+							"type": "Expression"
+						},
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_SQL_Watermark",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": true
+				}
+			},
+			{
+				"name": "SetVar_Skip",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Lookup_GetWatermark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "vSkip",
+					"value": {
+						"value": "@int(activity('Lookup_GetWatermark').output.firstRow.WatermarkValue)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SetVar_RunFolder",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Lookup_GetWatermark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "vRunFolder",
+					"value": {
+						"value": "@formatDateTime(utcnow(),'yyyy/MM/dd/HH')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Web_GetTotalCount",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "SetVar_Skip",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:05:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": "https://dummyjson.com/products?limit=1&skip=0"
+				}
+			},
+			{
+				"name": "SetVar_Total",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Web_GetTotalCount",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "vTotal",
+					"value": {
+						"value": "@int(activity('Web_GetTotalCount').output.total)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Until_PaginateAndLand",
+				"type": "Until",
+				"dependsOn": [
+					{
+						"activity": "SetVar_Total",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SetVar_RunFolder",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greaterOrEquals(variables('vSkip'), variables('vTotal'))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copy_ProductsPage",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:10:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "RestSource",
+									"httpRequestTimeout": "00:01:40",
+									"requestInterval": "00.00:00:00.010",
+									"requestMethod": "GET"
+								},
+								"sink": {
+									"type": "JsonSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "JsonWriteSettings",
+										"filePattern": "setOfObjects"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_REST_Products",
+									"type": "DatasetReference",
+									"parameters": {
+										"relativeUrl": {
+											"value": "@concat('/products?limit=', string(pipeline().parameters.PageSize), '&skip=', string(variables('vSkip')))",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "Json1",
+									"type": "DatasetReference",
+									"parameters": {
+										"folderPath": {
+											"value": "@concat('project-raw1/api/dummyjson/products/', variables('vRunFolder'))",
+											"type": "Expression"
+										},
+										"fileName": {
+											"value": "@concat('part-', string(variables('vSkip')), '.json')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "SetVar_ComputeNextSkip",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Copy_ProductsPage",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "vSkipNext",
+								"value": {
+									"value": "@add(variables('vSkip'), pipeline().parameters.PageSize)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetVar_ApplySkip",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "SetVar_ComputeNextSkip",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "vSkip",
+								"value": {
+									"value": "@variables('vSkipNext')",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"timeout": "0.12:00:00"
+				}
+			},
+			{
+				"name": "Copy_FlattenToStaging",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Until_PaginateAndLand",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:15:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": false,
+							"wildcardFolderPath": {
+								"value": "@concat('project-raw1/api/dummyjson/products/', variables('vRunFolder'))",
+								"type": "Expression"
+							},
+							"wildcardFileName": "*.json"
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "SqlServerSink",
+						"preCopyScript": "TRUNCATE TABLE dbo.stg_Products",
+						"writeBehavior": "insert"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"type": "Int32",
+									"path": "$['id']"
+								},
+								"sink": {
+									"name": "Id",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['title']"
+								},
+								"sink": {
+									"name": "Title",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['description']"
+								},
+								"sink": {
+									"name": "Description",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['category']"
+								},
+								"sink": {
+									"name": "Category",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "Decimal",
+									"path": "$['price']"
+								},
+								"sink": {
+									"name": "Price",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"type": "Decimal",
+									"path": "$['discountPercentage']"
+								},
+								"sink": {
+									"name": "DiscountPercentage",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"type": "Decimal",
+									"path": "$['rating']"
+								},
+								"sink": {
+									"name": "Rating",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"type": "Int32",
+									"path": "$['stock']"
+								},
+								"sink": {
+									"name": "Stock",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['brand']"
+								},
+								"sink": {
+									"name": "Brand",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['sku']"
+								},
+								"sink": {
+									"name": "Sku",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "Decimal",
+									"path": "$['weight']"
+								},
+								"sink": {
+									"name": "Weight",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"type": "Decimal",
+									"path": "$['dimensions']['width']"
+								},
+								"sink": {
+									"name": "DimensionWidth",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"type": "Decimal",
+									"path": "$['dimensions']['height']"
+								},
+								"sink": {
+									"name": "DimensionHeight",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"type": "Decimal",
+									"path": "$['dimensions']['depth']"
+								},
+								"sink": {
+									"name": "DimensionDepth",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['warrantyInformation']"
+								},
+								"sink": {
+									"name": "WarrantyInformation",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['shippingInformation']"
+								},
+								"sink": {
+									"name": "ShippingInformation",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['availabilityStatus']"
+								},
+								"sink": {
+									"name": "AvailabilityStatus",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['returnPolicy']"
+								},
+								"sink": {
+									"name": "ReturnPolicy",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "Int32",
+									"path": "$['minimumOrderQuantity']"
+								},
+								"sink": {
+									"name": "MinimumOrderQuantity",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['meta']['barcode']"
+								},
+								"sink": {
+									"name": "Barcode",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['meta']['qrCode']"
+								},
+								"sink": {
+									"name": "QrCode",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"type": "DateTime",
+									"path": "$['meta']['createdAt']"
+								},
+								"sink": {
+									"name": "CreatedAt",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"type": "DateTime",
+									"path": "$['meta']['updatedAt']"
+								},
+								"sink": {
+									"name": "UpdatedAt",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"type": "String",
+									"path": "$['thumbnail']"
+								},
+								"sink": {
+									"name": "Thumbnail",
+									"type": "String"
+								}
+							}
+						],
+						"collectionReference": "$['products']"
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Json1",
+						"type": "DatasetReference",
+						"parameters": {
+							"folderPath": {
+								"value": "@concat('project-raw1/api/dummyjson/products/', variables('vRunFolder'))",
+								"type": "Expression"
+							},
+							"fileName": "*.json"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_SQL_Staging",
+						"type": "DatasetReference",
+						"parameters": {
+							"tableName": "stg_Products"
+						}
+					}
+				]
+			},
+			{
+				"name": "Script_MergeToCurated",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Copy_FlattenToStaging",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "MERGE dbo.Products_Curated AS tgt USING dbo.stg_Products AS src ON tgt.Id = src.Id WHEN MATCHED THEN UPDATE SET tgt.Title = src.Title, tgt.Description = src.Description, tgt.Category = src.Category, tgt.Price = src.Price, tgt.DiscountPercentage = src.DiscountPercentage, tgt.Rating = src.Rating, tgt.Stock = src.Stock, tgt.Brand = src.Brand, tgt.Sku = src.Sku, tgt.Weight = src.Weight, tgt.DimensionWidth = src.DimensionWidth, tgt.DimensionHeight = src.DimensionHeight, tgt.DimensionDepth = src.DimensionDepth, tgt.WarrantyInformation = src.WarrantyInformation, tgt.ShippingInformation = src.ShippingInformation, tgt.AvailabilityStatus = src.AvailabilityStatus, tgt.ReturnPolicy = src.ReturnPolicy, tgt.MinimumOrderQuantity = src.MinimumOrderQuantity, tgt.Barcode = src.Barcode, tgt.QrCode = src.QrCode, tgt.CreatedAt = src.CreatedAt, tgt.UpdatedAt = src.UpdatedAt, tgt.Thumbnail = src.Thumbnail, tgt.LastModifiedDate = SYSUTCDATETIME() WHEN NOT MATCHED THEN INSERT (Id, Title, Description, Category, Price, DiscountPercentage, Rating, Stock, Brand, Sku, Weight, DimensionWidth, DimensionHeight, DimensionDepth, WarrantyInformation, ShippingInformation, AvailabilityStatus, ReturnPolicy, MinimumOrderQuantity, Barcode, QrCode, CreatedAt, UpdatedAt, Thumbnail) VALUES (src.Id, src.Title, src.Description, src.Category, src.Price, src.DiscountPercentage, src.Rating, src.Stock, src.Brand, src.Sku, src.Weight, src.DimensionWidth, src.DimensionHeight, src.DimensionDepth, src.WarrantyInformation, src.ShippingInformation, src.AvailabilityStatus, src.ReturnPolicy, src.MinimumOrderQuantity, src.Barcode, src.QrCode, src.CreatedAt, src.UpdatedAt, src.Thumbnail);"
+						}
+					]
+				}
+			},
+			{
+				"name": "Script_UpdateWatermark",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Script_MergeToCurated",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "UPDATE dbo.ETL_Watermark SET WatermarkValue = '@{string(variables('vSkip'))}', LastUpdatedDate = SYSUTCDATETIME(), Status = 'Success' WHERE SourceSystem = '@{pipeline().parameters.SourceSystem}' AND EntityName = '@{pipeline().parameters.EntityName}'",
+								"type": "Expression"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Script_LogError",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Until_PaginateAndLand",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'Until_PaginateAndLand', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', '@{activity('Until_PaginateAndLand').Error.Message}')",
+								"type": "Expression"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"SourceSystem": {
+				"type": "string",
+				"defaultValue": "DummyJSON"
+			},
+			"EntityName": {
+				"type": "string",
+				"defaultValue": "Products"
+			},
+			"PageSize": {
+				"type": "int",
+				"defaultValue": 50
+			}
+		},
+		"variables": {
+			"vSkip": {
+				"type": "Integer",
+				"defaultValue": 0
+			},
+			"vTotal": {
+				"type": "Integer",
+				"defaultValue": 0
+			},
+			"vRunFolder": {
+				"type": "String"
+			},
+			"vSkipNext": {
+				"type": "Integer",
+				"defaultValue": 0
+			}
+		},
+		"annotations": []
+	}
+}
