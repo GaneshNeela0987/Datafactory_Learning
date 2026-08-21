@@ -1,0 +1,51 @@
+{
+	"name": "DS_SQL_ErrorLog",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SqlServer1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "SqlServerTable",
+		"schema": [
+			{
+				"name": "ErrorLogID",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "PipelineName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "RunId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ActivityName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "SourceSystem",
+				"type": "nvarchar"
+			},
+			{
+				"name": "EntityName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ErrorMessage",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ErrorDateTime",
+				"type": "datetime2",
+				"scale": 7
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "ETL_ErrorLog"
+		}
+	}
+}

@@ -1,7 +1,7 @@
 {
 	"name": "PL_DummyJSON_Products_Ingest",
 	"properties": {
-		"description": "Extracts Products from DummyJSON via offset/limit pagination, lands raw JSON in ADLS Gen2, flattens into SQL staging, merges into curated, updates watermark, logs failures.",
+		"description": "Extracts Products from DummyJSON via offset/limit pagination, lands raw JSON in ADLS Gen2, reads each page directly from REST to flatten products into SQL staging, merges into curated, updates watermark, logs failures.",
 		"activities": [
 			{
 				"name": "Lookup_GetWatermark",
@@ -51,6 +51,30 @@
 					"variableName": "vSkip",
 					"value": {
 						"value": "@int(activity('Lookup_GetWatermark').output.firstRow.WatermarkValue)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SetVar_StageSkip",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "SetVar_Skip",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "vStageSkip",
+					"value": {
+						"value": "@variables('vSkip')",
 						"type": "Expression"
 					}
 				}
@@ -264,8 +288,8 @@
 				}
 			},
 			{
-				"name": "Copy_FlattenToStaging",
-				"type": "Copy",
+				"name": "Script_TruncateStaging",
+				"type": "Script",
 				"dependsOn": [
 					{
 						"activity": "Until_PaginateAndLand",
@@ -275,8 +299,39 @@
 					}
 				],
 				"policy": {
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "TRUNCATE TABLE dbo.stg_Products;"
+						}
+					]
+				}
+			},
+			{
+				"name": "Copy_FlattenToStaging",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Script_TruncateStaging",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
 					"timeout": "0.00:15:00",
-					"retry": 1,
+					"retry": 2,
 					"retryIntervalInSeconds": 30,
 					"secureOutput": false,
 					"secureInput": false
@@ -300,7 +355,6 @@
 					},
 					"sink": {
 						"type": "SqlServerSink",
-						"preCopyScript": "TRUNCATE TABLE dbo.stg_Products",
 						"writeBehavior": "insert"
 					},
 					"enableStaging": false,
@@ -309,7 +363,6 @@
 						"mappings": [
 							{
 								"source": {
-									"type": "Int32",
 									"path": "$['id']"
 								},
 								"sink": {
@@ -319,7 +372,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['title']"
 								},
 								"sink": {
@@ -329,7 +381,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['description']"
 								},
 								"sink": {
@@ -339,7 +390,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['category']"
 								},
 								"sink": {
@@ -349,7 +399,6 @@
 							},
 							{
 								"source": {
-									"type": "Decimal",
 									"path": "$['price']"
 								},
 								"sink": {
@@ -359,7 +408,6 @@
 							},
 							{
 								"source": {
-									"type": "Decimal",
 									"path": "$['discountPercentage']"
 								},
 								"sink": {
@@ -369,7 +417,6 @@
 							},
 							{
 								"source": {
-									"type": "Decimal",
 									"path": "$['rating']"
 								},
 								"sink": {
@@ -379,7 +426,6 @@
 							},
 							{
 								"source": {
-									"type": "Int32",
 									"path": "$['stock']"
 								},
 								"sink": {
@@ -389,7 +435,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['brand']"
 								},
 								"sink": {
@@ -399,7 +444,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['sku']"
 								},
 								"sink": {
@@ -409,7 +453,6 @@
 							},
 							{
 								"source": {
-									"type": "Decimal",
 									"path": "$['weight']"
 								},
 								"sink": {
@@ -419,7 +462,6 @@
 							},
 							{
 								"source": {
-									"type": "Decimal",
 									"path": "$['dimensions']['width']"
 								},
 								"sink": {
@@ -429,7 +471,6 @@
 							},
 							{
 								"source": {
-									"type": "Decimal",
 									"path": "$['dimensions']['height']"
 								},
 								"sink": {
@@ -439,7 +480,6 @@
 							},
 							{
 								"source": {
-									"type": "Decimal",
 									"path": "$['dimensions']['depth']"
 								},
 								"sink": {
@@ -449,7 +489,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['warrantyInformation']"
 								},
 								"sink": {
@@ -459,7 +498,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['shippingInformation']"
 								},
 								"sink": {
@@ -469,7 +507,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['availabilityStatus']"
 								},
 								"sink": {
@@ -479,7 +516,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['returnPolicy']"
 								},
 								"sink": {
@@ -489,7 +525,6 @@
 							},
 							{
 								"source": {
-									"type": "Int32",
 									"path": "$['minimumOrderQuantity']"
 								},
 								"sink": {
@@ -499,7 +534,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['meta']['barcode']"
 								},
 								"sink": {
@@ -509,7 +543,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['meta']['qrCode']"
 								},
 								"sink": {
@@ -519,7 +552,6 @@
 							},
 							{
 								"source": {
-									"type": "DateTime",
 									"path": "$['meta']['createdAt']"
 								},
 								"sink": {
@@ -529,7 +561,6 @@
 							},
 							{
 								"source": {
-									"type": "DateTime",
 									"path": "$['meta']['updatedAt']"
 								},
 								"sink": {
@@ -539,7 +570,6 @@
 							},
 							{
 								"source": {
-									"type": "String",
 									"path": "$['thumbnail']"
 								},
 								"sink": {
@@ -554,14 +584,7 @@
 				"inputs": [
 					{
 						"referenceName": "Json1",
-						"type": "DatasetReference",
-						"parameters": {
-							"folderPath": {
-								"value": "@concat('project-raw1/api/dummyjson/products/', variables('vRunFolder'))",
-								"type": "Expression"
-							},
-							"fileName": "*.json"
-						}
+						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
@@ -575,7 +598,7 @@
 				]
 			},
 			{
-				"name": "Script_MergeToCurated",
+				"name": "Script_ValidateStaging",
 				"type": "Script",
 				"dependsOn": [
 					{
@@ -586,7 +609,8 @@
 					}
 				],
 				"policy": {
-					"retry": 0,
+					"timeout": "0.00:10:00",
+					"retry": 2,
 					"retryIntervalInSeconds": 30,
 					"secureOutput": false,
 					"secureInput": false
@@ -600,24 +624,25 @@
 					"scripts": [
 						{
 							"type": "Query",
-							"text": "MERGE dbo.Products_Curated AS tgt USING dbo.stg_Products AS src ON tgt.Id = src.Id WHEN MATCHED THEN UPDATE SET tgt.Title = src.Title, tgt.Description = src.Description, tgt.Category = src.Category, tgt.Price = src.Price, tgt.DiscountPercentage = src.DiscountPercentage, tgt.Rating = src.Rating, tgt.Stock = src.Stock, tgt.Brand = src.Brand, tgt.Sku = src.Sku, tgt.Weight = src.Weight, tgt.DimensionWidth = src.DimensionWidth, tgt.DimensionHeight = src.DimensionHeight, tgt.DimensionDepth = src.DimensionDepth, tgt.WarrantyInformation = src.WarrantyInformation, tgt.ShippingInformation = src.ShippingInformation, tgt.AvailabilityStatus = src.AvailabilityStatus, tgt.ReturnPolicy = src.ReturnPolicy, tgt.MinimumOrderQuantity = src.MinimumOrderQuantity, tgt.Barcode = src.Barcode, tgt.QrCode = src.QrCode, tgt.CreatedAt = src.CreatedAt, tgt.UpdatedAt = src.UpdatedAt, tgt.Thumbnail = src.Thumbnail, tgt.LastModifiedDate = SYSUTCDATETIME() WHEN NOT MATCHED THEN INSERT (Id, Title, Description, Category, Price, DiscountPercentage, Rating, Stock, Brand, Sku, Weight, DimensionWidth, DimensionHeight, DimensionDepth, WarrantyInformation, ShippingInformation, AvailabilityStatus, ReturnPolicy, MinimumOrderQuantity, Barcode, QrCode, CreatedAt, UpdatedAt, Thumbnail) VALUES (src.Id, src.Title, src.Description, src.Category, src.Price, src.DiscountPercentage, src.Rating, src.Stock, src.Brand, src.Sku, src.Weight, src.DimensionWidth, src.DimensionHeight, src.DimensionDepth, src.WarrantyInformation, src.ShippingInformation, src.AvailabilityStatus, src.ReturnPolicy, src.MinimumOrderQuantity, src.Barcode, src.QrCode, src.CreatedAt, src.UpdatedAt, src.Thumbnail);"
+							"text": "EXEC dbo.usp_ValidateProducts;"
 						}
 					]
 				}
 			},
 			{
-				"name": "Script_UpdateWatermark",
+				"name": "Script_LogValidationError",
 				"type": "Script",
 				"dependsOn": [
 					{
-						"activity": "Script_MergeToCurated",
+						"activity": "Script_ValidateStaging",
 						"dependencyConditions": [
-							"Succeeded"
+							"Failed"
 						]
 					}
 				],
 				"policy": {
-					"retry": 0,
+					"timeout": "0.00:05:00",
+					"retry": 1,
 					"retryIntervalInSeconds": 30,
 					"secureOutput": false,
 					"secureInput": false
@@ -632,7 +657,185 @@
 						{
 							"type": "Query",
 							"text": {
-								"value": "UPDATE dbo.ETL_Watermark SET WatermarkValue = '@{string(variables('vSkip'))}', LastUpdatedDate = SYSUTCDATETIME(), Status = 'Success' WHERE SourceSystem = '@{pipeline().parameters.SourceSystem}' AND EntityName = '@{pipeline().parameters.EntityName}'",
+								"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'Script_ValidateStaging', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', '@{activity('Script_ValidateStaging').Error.Message}')",
+								"type": "Expression"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Script_MergeToCurated",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Script_ValidateStaging",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "MERGE dbo.Products_Curated AS tgt\nUSING dbo.stg_Products AS src\nON tgt.Id = src.Id\nWHEN MATCHED THEN\n    UPDATE SET\n        tgt.Title = src.Title,\n        tgt.Description = src.Description,\n        tgt.Category = src.Category,\n        tgt.Price = src.Price,\n        tgt.DiscountPercentage = src.DiscountPercentage,\n        tgt.Rating = src.Rating,\n        tgt.Stock = src.Stock,\n        tgt.Brand = src.Brand,\n        tgt.Sku = src.Sku,\n        tgt.Weight = src.Weight,\n        tgt.DimensionWidth = src.DimensionWidth,\n        tgt.DimensionHeight = src.DimensionHeight,\n        tgt.DimensionDepth = src.DimensionDepth,\n        tgt.WarrantyInformation = src.WarrantyInformation,\n        tgt.ShippingInformation = src.ShippingInformation,\n        tgt.AvailabilityStatus = src.AvailabilityStatus,\n        tgt.ReturnPolicy = src.ReturnPolicy,\n        tgt.MinimumOrderQuantity = src.MinimumOrderQuantity,\n        tgt.Barcode = src.Barcode,\n        tgt.QrCode = src.QrCode,\n        tgt.CreatedAt = src.CreatedAt,\n        tgt.UpdatedAt = src.UpdatedAt,\n        tgt.Thumbnail = src.Thumbnail,\n        tgt.LastModifiedDate = SYSUTCDATETIME()\nWHEN NOT MATCHED BY TARGET THEN\n    INSERT (\n        Id, Title, Description, Category, Price, DiscountPercentage, Rating,\n        Stock, Brand, Sku, Weight, DimensionWidth, DimensionHeight, DimensionDepth,\n        WarrantyInformation, ShippingInformation, AvailabilityStatus, ReturnPolicy,\n        MinimumOrderQuantity, Barcode, QrCode, CreatedAt, UpdatedAt, Thumbnail,\n        LastModifiedDate\n    )\n    VALUES (\n        src.Id, src.Title, src.Description, src.Category, src.Price, src.DiscountPercentage, src.Rating,\n        src.Stock, src.Brand, src.Sku, src.Weight, src.DimensionWidth, src.DimensionHeight, src.DimensionDepth,\n        src.WarrantyInformation, src.ShippingInformation, src.AvailabilityStatus, src.ReturnPolicy,\n        src.MinimumOrderQuantity, src.Barcode, src.QrCode, src.CreatedAt, src.UpdatedAt, src.Thumbnail,\n        SYSUTCDATETIME()\n    );",
+								"type": "Expression"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Script_ReportingValidation",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Script_MergeToCurated",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:05:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "SELECT COUNT(*) AS CuratedProductCount FROM dbo.Products_Curated;"
+						}
+					]
+				}
+			},
+			{
+				"name": "Script_LogReportingError",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Script_ReportingValidation",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:05:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'Script_ReportingValidation', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', '@{activity('Script_ReportingValidation').Error.Message}')",
+								"type": "Expression"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Script_UpdateWatermark",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Script_ReportingValidation",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:05:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "@concat('UPDATE dbo.ETL_Watermark SET WatermarkValue = ', string(variables('vSkip')), ', LastUpdatedDate = SYSUTCDATETIME(), Status = ''Success'' WHERE SourceSystem = ''', pipeline().parameters.SourceSystem, ''' AND EntityName = ''', pipeline().parameters.EntityName, ''';')",
+								"type": "Expression"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Script_LogSuccess",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Script_UpdateWatermark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Script_ReportingValidation",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:05:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'PipelineSuccess', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', 'Pipeline completed successfully. Raw API data landed in ADLS, staging validated, curated merge completed, reporting validation passed, and watermark updated.')",
 								"type": "Expression"
 							}
 						}
@@ -672,8 +875,43 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "Script_LogStagingError",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Copy_FlattenToStaging",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "INSERT INTO dbo.ETL_ErrorLog (PipelineName, RunId, ActivityName, SourceSystem, EntityName, ErrorMessage) VALUES ('@{pipeline().Pipeline}', '@{pipeline().RunId}', 'Copy_FlattenToStaging', '@{pipeline().parameters.SourceSystem}', '@{pipeline().parameters.EntityName}', '@{activity('Copy_FlattenToStaging').Error.Message}')",
+								"type": "Expression"
+							}
+						}
+					]
+				}
 			}
 		],
+		"concurrency": 1,
 		"parameters": {
 			"SourceSystem": {
 				"type": "string",
@@ -703,8 +941,30 @@
 			"vSkipNext": {
 				"type": "Integer",
 				"defaultValue": 0
+			},
+			"vStageSkip": {
+				"type": "Integer",
+				"defaultValue": 0
+			},
+			"vStageSkipNext": {
+				"type": "Integer",
+				"defaultValue": 0
 			}
 		},
-		"annotations": []
+		"annotations": [
+			"REST API ingestion",
+			"Pagination",
+			"Watermark",
+			"ADLS Gen2 raw landing",
+			"ADLS Raw JSON to SQL staging",
+			"JSON flattening",
+			"SQL staging",
+			"Data validation",
+			"SQL MERGE upsert",
+			"Reporting validation",
+			"Watermark update after successful load",
+			"Failure logging",
+			"Retry policies"
+		]
 	}
 }
