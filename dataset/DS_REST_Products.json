@@ -8,7 +8,7 @@
 		"parameters": {
 			"relativeUrl": {
 				"type": "string",
-				"defaultValue": "/products?limit=50&skip=0"
+				"defaultValue": "/products?limit=500&skip=0"
 			}
 		},
 		"annotations": [],
