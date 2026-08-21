@@ -1,0 +1,21 @@
+{
+	"name": "DS_REST_Products",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_REST_DummyJSON",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"relativeUrl": {
+				"type": "string",
+				"defaultValue": "/products?limit=50&skip=0"
+			}
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": "@dataset().relativeUrl"
+		},
+		"schema": []
+	}
+}
