@@ -1,0 +1,26 @@
+{
+	"name": "DS_ADLS_Curated_Parquet",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStoragePractice1",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"folderPath": {
+				"type": "string",
+				"defaultValue": "project-raw1/api/dummyjson/products/1970/01/01"
+			}
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "@dataset().folderPath",
+				"fileSystem": "ganeshblobpractice"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	}
+}
