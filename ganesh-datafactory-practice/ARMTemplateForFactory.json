@@ -580,7 +580,7 @@
 								"mappings": [
 									{
 										"source": {
-											"path": "$['id']"
+											"path": "[['id']"
 										},
 										"sink": {
 											"name": "Id",
@@ -589,7 +589,7 @@
 									},
 									{
 										"source": {
-											"path": "$['title']"
+											"path": "[['title']"
 										},
 										"sink": {
 											"name": "Title",
@@ -598,7 +598,7 @@
 									},
 									{
 										"source": {
-											"path": "$['description']"
+											"path": "[['description']"
 										},
 										"sink": {
 											"name": "Description",
@@ -607,7 +607,7 @@
 									},
 									{
 										"source": {
-											"path": "$['category']"
+											"path": "[['category']"
 										},
 										"sink": {
 											"name": "Category",
@@ -616,7 +616,7 @@
 									},
 									{
 										"source": {
-											"path": "$['price']"
+											"path": "[['price']"
 										},
 										"sink": {
 											"name": "Price",
@@ -625,7 +625,7 @@
 									},
 									{
 										"source": {
-											"path": "$['discountPercentage']"
+											"path": "[['discountPercentage']"
 										},
 										"sink": {
 											"name": "DiscountPercentage",
@@ -634,7 +634,7 @@
 									},
 									{
 										"source": {
-											"path": "$['rating']"
+											"path": "[['rating']"
 										},
 										"sink": {
 											"name": "Rating",
@@ -643,7 +643,7 @@
 									},
 									{
 										"source": {
-											"path": "$['stock']"
+											"path": "[['stock']"
 										},
 										"sink": {
 											"name": "Stock",
@@ -652,7 +652,7 @@
 									},
 									{
 										"source": {
-											"path": "$['brand']"
+											"path": "[['brand']"
 										},
 										"sink": {
 											"name": "Brand",
@@ -661,7 +661,7 @@
 									},
 									{
 										"source": {
-											"path": "$['sku']"
+											"path": "[['sku']"
 										},
 										"sink": {
 											"name": "Sku",
@@ -670,7 +670,7 @@
 									},
 									{
 										"source": {
-											"path": "$['weight']"
+											"path": "[['weight']"
 										},
 										"sink": {
 											"name": "Weight",
@@ -679,7 +679,7 @@
 									},
 									{
 										"source": {
-											"path": "$['dimensions']['width']"
+											"path": "[['dimensions']['width']"
 										},
 										"sink": {
 											"name": "DimensionWidth",
@@ -688,7 +688,7 @@
 									},
 									{
 										"source": {
-											"path": "$['dimensions']['height']"
+											"path": "[['dimensions']['height']"
 										},
 										"sink": {
 											"name": "DimensionHeight",
@@ -697,7 +697,7 @@
 									},
 									{
 										"source": {
-											"path": "$['dimensions']['depth']"
+											"path": "[['dimensions']['depth']"
 										},
 										"sink": {
 											"name": "DimensionDepth",
@@ -706,7 +706,7 @@
 									},
 									{
 										"source": {
-											"path": "$['warrantyInformation']"
+											"path": "[['warrantyInformation']"
 										},
 										"sink": {
 											"name": "WarrantyInformation",
@@ -715,7 +715,7 @@
 									},
 									{
 										"source": {
-											"path": "$['shippingInformation']"
+											"path": "[['shippingInformation']"
 										},
 										"sink": {
 											"name": "ShippingInformation",
@@ -724,7 +724,7 @@
 									},
 									{
 										"source": {
-											"path": "$['availabilityStatus']"
+											"path": "[['availabilityStatus']"
 										},
 										"sink": {
 											"name": "AvailabilityStatus",
@@ -733,7 +733,7 @@
 									},
 									{
 										"source": {
-											"path": "$['returnPolicy']"
+											"path": "[['returnPolicy']"
 										},
 										"sink": {
 											"name": "ReturnPolicy",
@@ -742,7 +742,7 @@
 									},
 									{
 										"source": {
-											"path": "$['minimumOrderQuantity']"
+											"path": "[['minimumOrderQuantity']"
 										},
 										"sink": {
 											"name": "MinimumOrderQuantity",
@@ -751,7 +751,7 @@
 									},
 									{
 										"source": {
-											"path": "$['meta']['barcode']"
+											"path": "[['meta']['barcode']"
 										},
 										"sink": {
 											"name": "Barcode",
@@ -760,7 +760,7 @@
 									},
 									{
 										"source": {
-											"path": "$['meta']['qrCode']"
+											"path": "[['meta']['qrCode']"
 										},
 										"sink": {
 											"name": "QrCode",
@@ -769,7 +769,7 @@
 									},
 									{
 										"source": {
-											"path": "$['meta']['createdAt']"
+											"path": "[['meta']['createdAt']"
 										},
 										"sink": {
 											"name": "CreatedAt",
@@ -778,7 +778,7 @@
 									},
 									{
 										"source": {
-											"path": "$['meta']['updatedAt']"
+											"path": "[['meta']['updatedAt']"
 										},
 										"sink": {
 											"name": "UpdatedAt",
@@ -787,7 +787,7 @@
 									},
 									{
 										"source": {
-											"path": "$['thumbnail']"
+											"path": "[['thumbnail']"
 										},
 										"sink": {
 											"name": "Thumbnail",
@@ -802,7 +802,13 @@
 							{
 								"referenceName": "Json1",
 								"type": "DatasetReference",
-								"parameters": {}
+								"parameters": {
+									"folderPath": {
+										"value": "@concat('project-raw1/api/dummyjson/products/', variables('vRunFolder'))",
+										"type": "Expression"
+									},
+									"fileName": "*.json"
+								}
 							}
 						],
 						"outputs": [
@@ -842,7 +848,7 @@
 							"scripts": [
 								{
 									"type": "Query",
-									"text": "EXEC dbo.usp_ValidateProducts;"
+									"text": "SELECT\n    COUNT(*) AS StagingRows,\n    SUM(CASE WHEN Id IS NULL THEN 1 ELSE 0 END) AS NullIds\nFROM dbo.stg_Products;"
 								}
 							]
 						}
@@ -1545,11 +1551,11 @@
 				"parameters": {
 					"folderPath": {
 						"type": "string",
-						"defaultValue": "project-raw1/api/dummyjson/products/1970/01/01/00"
+						"defaultValue": "project-raw1/api/dummyjson/products"
 					},
 					"fileName": {
 						"type": "string",
-						"defaultValue": "part-00001.json"
+						"defaultValue": "products.json"
 					}
 				},
 				"annotations": [],
