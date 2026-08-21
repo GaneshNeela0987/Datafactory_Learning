@@ -1,16 +1,33 @@
 {
-	"name": "DS_ADLS_Raw_JSON",
+	"name": "Json1",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "AzureDataLakeStoragePractice1",
 			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"folderPath": {
+				"type": "string",
+				"defaultValue": "project-raw1/api/dummyjson/products/1970/01/01/00"
+			},
+			"fileName": {
+				"type": "string",
+				"defaultValue": "part-00001.json"
+			}
 		},
 		"annotations": [],
 		"type": "Json",
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobFSLocation",
-				"folderPath": "project-raw1",
+				"fileName": {
+					"value": "@dataset().fileName",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().folderPath",
+					"type": "Expression"
+				},
 				"fileSystem": "ganeshblobpractice"
 			}
 		},
